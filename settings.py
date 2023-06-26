@@ -3,13 +3,24 @@ from pathlib import Path
 from pydantic import BaseSettings
 
 base_dir = Path(__file__).parent.absolute()
-print(base_dir)
 
 
 class Settings(BaseSettings):
     mail_host: str
     mail_user: str
     mail_password: str
+
+    postgres_user: str
+    postgres_password: str
+    postgres_host: str
+    postgres_port: int
+    postgres_db: str
+
+    api_key: str
+
+    @property
+    def postgres_dsn(self) -> str:
+        return f'postgresql+psycopg2://{self.postgres_user}:{self.postgres_password}@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}'
 
     class Config:
         config_file_name = f'{base_dir}/.env'
