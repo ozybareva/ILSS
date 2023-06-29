@@ -16,7 +16,8 @@ class Settings(BaseSettings):
     postgres_port: int
     postgres_db: str
 
-    api_key: str
+    api_token: str
+    chat_id: str
 
     @property
     def postgres_dsn(self) -> str:
