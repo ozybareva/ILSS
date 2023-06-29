@@ -9,6 +9,7 @@ class PostgresConnector:
     def __init__(self, settings: Settings):
         self.postgres_dsn = settings.postgres_dsn
         self.connection = None
+        self.session = None
 
     def get_connection(self):
         if not self.connection:
@@ -24,4 +25,12 @@ class PostgresConnector:
     def create_session(self):
         engine = self.get_connection()
         Session = sessionmaker(bind=engine)
-        return Session()
+        self.session = Session()
+        return self.session
+
+    def get_session(self):
+        if self.session:
+            return self.session
+        else:
+            return self.create_session()
+
