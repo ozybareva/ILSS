@@ -6,12 +6,22 @@ class Base(DeclarativeBase):
      pass
 
 
+class Schedule(Base):
+    __tablename__ = 'schedule'
+    id = Column(Integer, primary_key=True)
+    week = Column('week', Integer)
+    year = Column('year', Integer)
+    schedule = Column('schedule', String, nullable=True)
+    train_results = Column('train_results', String, nullable=True)
+    comment = Column('comment', String, nullable=True)
+
+
 class TaskModel(Base):
     __tablename__ = 'tasks'
 
     id = Column(Integer, primary_key=True)
     date = Column('date', Date)
-    day_of_week = Column('type', String)
+    day_of_week = Column('day_of_week', String)
     week = Column('week', Integer)
     task = Column('task', String)
 
