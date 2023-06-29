@@ -1,4 +1,3 @@
-import datetime
 import imaplib
 import email
 import email.utils
@@ -16,17 +15,30 @@ class MailClient:
     def login(self):
         self.mail.login(self.user, self.password)
 
-    def read_messages_in_folder(self, folder: str) -> dict:
+    def get_new_messages_in_folder(self, folder: str) -> dict:
+        self.mail.select(folder)
+        typ, data = self.mail.search(None, '(UNSEEN)')
+        texts = {}
+        for num in data[0].split():
+            msg_datetime, text = self.read_message(num)
+            texts[msg_datetime] = text
+        return texts
+
+    def get_messages_in_folder(self, folder: str) -> dict:
         self.mail.select(folder)
         typ, data = self.mail.search(None, 'ALL')
         texts = {}
         for num in data[0].split():
-            typ, data = self.mail.fetch(num, '(RFC822)')
-            msg = email.message_from_bytes(data[0][1])
-            msg_datetime = email.utils.parsedate_to_datetime(msg.get('date'))
-            text = self.decode_text_message(msg)
+            msg_datetime, text = self.read_message(num)
             texts[msg_datetime] = text
         return texts
+
+    def read_message(self, num):
+        typ, data = self.mail.fetch(num, '(RFC822)')
+        msg = email.message_from_bytes(data[0][1])
+        msg_datetime = email.utils.parsedate_to_datetime(msg.get('date'))
+        text = self.decode_text_message(msg)
+        return msg_datetime, text
 
     def decode_text_message(self, message):
         for part in message.walk():
