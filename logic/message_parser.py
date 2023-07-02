@@ -1,12 +1,12 @@
 import re
 from datetime import datetime
 from logic.rules import DATE_RULE, SCHEDULE_RULE, COMMENTS_RULE, TRAIN_RESULTS_RULE
-from persistance.models import TaskModel
+from persistance.models import TaskModel, ScheduleModel
 
 DAYS = ['понедельник', 'вторник', 'среда', 'четверг', 'пятница', 'суббота', 'воскресенье']
 
 
-class Parser:
+class MessageParser:
 
     def get_schedule(self, text):
         schedule = SCHEDULE_RULE.search(text)
@@ -31,11 +31,19 @@ class Parser:
         year = msg_date.year
         return year
 
+    def get_schedule_model(self, msg_text, msg_date) -> ScheduleModel:
+        schedule = self.get_schedule(msg_text)
+        comment = self.get_comments(msg_text)
+        train_results = self.get_train_results(msg_text)
+        week = self.get_week(msg_date)
+        year = self.get_year(msg_date)
+        schedule_model = ScheduleModel(year=year, week=week, schedule=schedule, comment=comment, train_results=train_results)
+        return schedule_model
 
-    def parse_tasks(self, schedule, msg_date):
+    def parse_tasks(self, schedule, msg_date) -> list[TaskModel] | None:
         tasks = []
         if not schedule:
-            return
+            return tasks
         for i in range(len(DAYS)):
             if DAYS[i] != 'воскресенье':
                 info = re.search(rf'({DATE_RULE})(, {DAYS[i]})((.|\n)+)({DATE_RULE}, {DAYS[i + 1]})', schedule)
@@ -44,16 +52,13 @@ class Parser:
             if info:
                 task = info.group(5)
                 day_of_week = DAYS[i]
-                week = msg_date.isocalendar()[1]
-                date = self.postprocess_date(info.group(2, 3), msg_date)
+                week = self.get_week(msg_date)
+                date = self.postprocess_date(info.group(2), info.group(3),msg_date)
                 new_task = TaskModel(date=date, day_of_week=day_of_week, week=week, task=task)
                 tasks.append(new_task)
         return tasks
 
-    def postprocess_date(self, task_date, msg_date):
-        day = int(task_date[0])
-        month_name = task_date[1]
-
+    def postprocess_date(self, task_day, task_month, msg_date):
         month = {
             "января": 1,
             "февраля": 2,
@@ -68,6 +73,10 @@ class Parser:
             "ноября": 11,
             "декабря": 12
         }
-        month_number = month.get(month_name)
+        month_number = month.get(task_month)
         year = msg_date.year
-        return datetime(day=day, month=month_number, year=year).date()
+        return datetime(day=int(task_day), month=month_number, year=year).date()
+
+    def define_task_year(self, msg_date: datetime):
+        #TODO: граничное условие для определения года таски
+        pass
