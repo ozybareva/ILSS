@@ -6,7 +6,7 @@ class Base(DeclarativeBase):
      pass
 
 
-class Schedule(Base):
+class ScheduleModel(Base):
     __tablename__ = 'schedule'
     id = Column(Integer, primary_key=True)
     week = Column('week', Integer)
