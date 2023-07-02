@@ -1,7 +1,10 @@
 from injector import provider, singleton, Module
+
+from application.routers import MessageRouter
 from clients.mail_client import MailClient
-from logic.parser import Parser
+from logic.message_parser import MessageParser
 from logic.bot.tg_bot import ILSSBot
+from logic.message_processor import MessageProcessor
 from persistance.postgres_connection import PostgresConnector
 from persistance.repository import Repository
 from settings import Settings
@@ -36,5 +39,25 @@ class Container(Module):
 
     @provider
     @singleton
-    def provide_parser(self) -> Parser:
-        return Parser()
+    def provide_parser(self) -> MessageParser:
+        return MessageParser()
+
+    @provider
+    @singleton
+    def provide_message_processor(
+            self,
+            settings: Settings,
+            mail_client: MailClient,
+            repository: Repository,
+            parser: MessageParser,
+            ilss_bot: ILSSBot
+    ) -> MessageProcessor:
+        return MessageProcessor(settings, mail_client, repository, parser, ilss_bot)
+
+    @provider
+    @singleton
+    def provide_message_router(
+            self,
+            message_processor: MessageProcessor
+    ) -> MessageRouter:
+        return MessageRouter(message_processor)
