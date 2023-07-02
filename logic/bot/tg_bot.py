@@ -45,7 +45,7 @@ class ILSSBot:
         await self.select_train_result_week(message)
 
     async def select_task_date(self, message: types.Message):
-        calendar, step = WYearTelegramCalendar(calendar_id=1, locale='ru').build()
+        calendar, step = DetailedTelegramCalendar(calendar_id=1, locale='ru').build()
         await self.bot.send_message(message.chat.id,
                                     f'Выбрать {LSTEP[step]}',
                                     reply_markup=calendar)
@@ -69,7 +69,7 @@ class ILSSBot:
                                     reply_markup=calendar)
 
     async def task_cal(self, c):
-        result, key, step = WYearTelegramCalendar(calendar_id=1, locale='ru').process(c.data)
+        result, key, step = DetailedTelegramCalendar(calendar_id=1, locale='ru').process(c.data)
         if not result and key:
             await self.bot.edit_message_text(f'Выбрать {LSTEP[step]}',
                                              c.message.chat.id,

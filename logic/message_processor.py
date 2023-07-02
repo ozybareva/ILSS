@@ -43,12 +43,12 @@ class MessageProcessor:
             self.repository.bulk_write_to_db(task_model_list)
         self.repository.bulk_write_to_db(schedule_model_list)
 
-    def parse_message(self, msg_text: str, msg_date):
+    def parse_message(self, msg_text: str, msg_date: datetime):
         try:
             schedule_model = self.parser.get_schedule_model(msg_text, msg_date)
-            task_models = self.parser.parse_tasks(schedule_model.schedule, msg_date)
-            return task_models, task_models
+            task_models = self.parser.parse_tasks(schedule_model.schedule, msg_date) if schedule_model.schedule else []
+            return task_models, schedule_model
         except Exception as ex:
-            logging.warning(f'Parsing error {ex}')
+            logging.error(f'Parsing error {ex}')
             return None, None
 

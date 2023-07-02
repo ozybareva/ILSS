@@ -21,7 +21,8 @@ class MailClient:
         texts = {}
         for num in data[0].split():
             msg_datetime, text = self.read_message(num)
-            texts[msg_datetime] = text
+            if msg_datetime and text:
+                texts[msg_datetime] = text
         return texts
 
     def get_messages_in_folder(self, folder: str) -> dict:
@@ -30,7 +31,8 @@ class MailClient:
         texts = {}
         for num in data[0].split():
             msg_datetime, text = self.read_message(num)
-            texts[msg_datetime] = text
+            if msg_datetime and text:
+                texts[msg_datetime] = text
         return texts
 
     def read_message(self, num):

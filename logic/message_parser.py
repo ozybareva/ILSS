@@ -8,39 +8,40 @@ DAYS = ['понедельник', 'вторник', 'среда', 'четвер�
 
 class MessageParser:
 
-    def get_schedule(self, text):
+    def get_schedule(self, text: str):
         schedule = SCHEDULE_RULE.search(text)
         if schedule:
             return schedule.group(2)
 
-    def get_train_results(self, text):
+    def get_train_results(self, text: str):
         train_results = TRAIN_RESULTS_RULE.search(text)
         if train_results:
             return train_results.group(2)
 
-    def get_comments(self, text):
+    def get_comments(self, text: str):
         comments = COMMENTS_RULE.search(text)
         if comments:
             return comments.group()
 
-    def get_week(self, msg_date):
+    def get_week(self, msg_date: datetime):
         week = msg_date.isocalendar()[1]
         return week
 
-    def get_year(self, msg_date):
+    def get_year(self, msg_date: datetime):
         year = msg_date.year
         return year
 
-    def get_schedule_model(self, msg_text, msg_date) -> ScheduleModel:
+    def get_schedule_model(self, msg_text: str, msg_date: datetime) -> ScheduleModel:
         schedule = self.get_schedule(msg_text)
         comment = self.get_comments(msg_text)
         train_results = self.get_train_results(msg_text)
         week = self.get_week(msg_date)
         year = self.get_year(msg_date)
-        schedule_model = ScheduleModel(year=year, week=week, schedule=schedule, comment=comment, train_results=train_results)
+        schedule_model = ScheduleModel(year=year, week=week, schedule=schedule, comment=comment,
+                                       train_results=train_results)
         return schedule_model
 
-    def parse_tasks(self, schedule, msg_date) -> list[TaskModel] | None:
+    def parse_tasks(self, schedule: str, msg_date: datetime) -> list[TaskModel] | None:
         tasks = []
         if not schedule:
             return tasks
@@ -52,9 +53,9 @@ class MessageParser:
             if info:
                 task = info.group(5)
                 day_of_week = DAYS[i]
-                week = self.get_week(msg_date)
-                date = self.postprocess_date(info.group(2), info.group(3),msg_date)
-                new_task = TaskModel(date=date, day_of_week=day_of_week, week=week, task=task)
+                task_week = self.get_week(msg_date)
+                task_date = self.postprocess_date(info.group(2), info.group(3), msg_date)
+                new_task = TaskModel(date=task_date, day_of_week=day_of_week, week=task_week, task=task)
                 tasks.append(new_task)
         return tasks
 
