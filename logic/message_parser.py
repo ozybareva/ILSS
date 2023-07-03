@@ -8,40 +8,41 @@ DAYS = ['понедельник', 'вторник', 'среда', 'четвер�
 
 class MessageParser:
 
-    def get_schedule(self, text: str):
+    def get_schedule(self, text: str) -> str | None:
         schedule = SCHEDULE_RULE.search(text)
         if schedule:
             return schedule.group(2)
 
-    def get_train_results(self, text: str):
+    def get_train_results(self, text: str) -> str | None:
         train_results = TRAIN_RESULTS_RULE.search(text)
         if train_results:
             return train_results.group(2)
 
-    def get_comments(self, text: str):
+    def get_comments(self, text: str) -> str | None:
         comments = COMMENTS_RULE.search(text)
         if comments:
             return comments.group()
 
-    def get_week(self, msg_date: datetime):
+    def get_week(self, msg_date: datetime) -> int:
         week = msg_date.isocalendar()[1]
         return week
 
-    def get_year(self, msg_date: datetime):
+    def get_year(self, msg_date: datetime) -> int:
         year = msg_date.year
         return year
 
-    def get_schedule_model(self, msg_text: str, msg_date: datetime) -> ScheduleModel:
+    def get_schedule_model(self, msg_text: str, msg_date: datetime) -> ScheduleModel | None:
         schedule = self.get_schedule(msg_text)
         comment = self.get_comments(msg_text)
         train_results = self.get_train_results(msg_text)
         week = self.get_week(msg_date)
         year = self.get_year(msg_date)
-        schedule_model = ScheduleModel(year=year, week=week, schedule=schedule, comment=comment,
-                                       train_results=train_results)
-        return schedule_model
+        if schedule or comment or train_results:
+            schedule_model = ScheduleModel(year=year, week=week, schedule=schedule, comment=comment,
+                                           train_results=train_results)
+            return schedule_model
 
-    def parse_tasks(self, schedule: str, msg_date: datetime) -> list[TaskModel] | None:
+    def parse_tasks(self, schedule: str, msg_date: datetime) -> list[TaskModel]:
         tasks = []
         if not schedule:
             return tasks
@@ -59,7 +60,7 @@ class MessageParser:
                 tasks.append(new_task)
         return tasks
 
-    def postprocess_date(self, task_day, task_month, msg_date):
+    def postprocess_date(self, task_day: str, task_month: str, msg_date: datetime):
         month = {
             "января": 1,
             "февраля": 2,
@@ -75,9 +76,11 @@ class MessageParser:
             "декабря": 12
         }
         month_number = month.get(task_month)
-        year = msg_date.year
+        year = self.define_task_year(int(task_day), month_number, msg_date)
         return datetime(day=int(task_day), month=month_number, year=year).date()
 
-    def define_task_year(self, msg_date: datetime):
-        #TODO: граничное условие для определения года таски
-        pass
+    def define_task_year(self, task_day: int, task_month: int, msg_date: datetime):
+        if task_day == 1 and task_month == 1 and self.get_week(msg_date) in [52, 53]:
+            return msg_date.year + 1
+        else:
+            return msg_date.year
