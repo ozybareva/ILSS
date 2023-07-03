@@ -7,6 +7,7 @@ from settings import Settings
 
 LSTEP = {'y': 'год', 'm': 'месяц', 'd': 'день'}
 
+
 class ILSSBot:
     def __init__(self, settings: Settings, repository: Repository):
         self.bot = Bot(token=settings.api_token)
