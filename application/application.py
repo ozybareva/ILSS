@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import uvicorn
 
@@ -73,4 +74,5 @@ class App:
             minute=self.settings.load_schedule_minute,
             hour=self.settings.load_schedule_hour,
             day_of_week=self.settings.load_schedule_day_of_week,
+            timezone='Asia/Tomsk'
         )

@@ -17,8 +17,8 @@ class Settings(BaseSettings):
     postgres_db: str
 
     load_schedule_second: str = '00'
-    load_schedule_minute: str = '00'
-    load_schedule_hour: str = '13'
+    load_schedule_minute: str = '53'
+    load_schedule_hour: str = '11'
     load_schedule_day_of_week: str = 'mon'
 
     api_token: str
