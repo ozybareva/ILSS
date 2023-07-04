@@ -1,7 +1,10 @@
 from aiogram import Bot, Dispatcher, types
+from aiogram.dispatcher import FSMContext
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from datetime import datetime
 from telegram_bot_calendar import DetailedTelegramCalendar
 
-from logic.bot.keyboard import get_menu_keyboard
+from logic.bot.keyboard import *
 from persistance.repository import Repository
 from settings import Settings
 
@@ -11,65 +14,63 @@ LSTEP = {'y': 'год', 'm': 'месяц', 'd': 'день'}
 class ILSSBot:
     def __init__(self, settings: Settings, repository: Repository):
         self.bot = Bot(token=settings.api_token)
-        self.dp = Dispatcher(self.bot)
+        self.storage = MemoryStorage()
+        self.dp = Dispatcher(self.bot, storage=self.storage)
+        self.chat_id = settings.chat_id
         self.repository = repository
         self.register_handlers()
 
     def register_handlers(self):
-        self.dp.register_message_handler(self.start, commands=["start"])
-        self.dp.register_message_handler(self.send_schedule, text=["Расписание на неделю"])
-        self.dp.register_message_handler(self.send_task, text=["Задание на день"])
-        self.dp.register_message_handler(self.send_comment, text=["Комментарии к недельному плану"])
-        self.dp.register_message_handler(self.send_train_results, text=["Результаты тренировок и комментарии тренера"])
-        self.dp.register_callback_query_handler(self.task_cal)
-        self.dp.register_callback_query_handler(self.schedule_cal)
-        self.dp.register_callback_query_handler(self.comment_cal)
-        self.dp.register_callback_query_handler(self.train_results_cal)
 
-    async def start(self, message: types.Message):
+        self.dp.register_message_handler(self.get_main_menu,
+                                         commands=['start'])
+        self.dp.register_message_handler(self.get_main_menu,
+                                         text=ButtonText.BUTTON_MAIN_MENU)
+
+        self.dp.register_message_handler(self.send_today_task_message,
+                                         text=ButtonText.BUTTON_CURRENT_DAY_TEXT)
+        self.dp.register_message_handler(self.send_current_week_schedule,
+                                         text=ButtonText.BUTTON_CURRENT_WEEK_SCHEDULE_TEXT)
+        self.dp.register_message_handler(self.select_date,
+                                         text=ButtonText.BUTTON_SELECT_DATE)
+
+        self.dp.register_message_handler(self.send_schedule_message_for_date,
+                                         text=ButtonText.BUTTON_SCHEDULE_TEXT,
+                                         state='*')
+        self.dp.register_message_handler(self.send_task_message_for_date,
+                                         text=ButtonText.BUTTON_TASK_TEXT,
+                                         state='*')
+        self.dp.register_message_handler(self.send_comments_message_for_date,
+                                         text=ButtonText.BUTTON_COMMENT_TEXT,
+                                         state='*')
+        self.dp.register_message_handler(self.send_train_results_message_for_date,
+                                         text=ButtonText.BUTTON_TRAIN_RESULTS_TEXT,
+                                         state='*')
+
+        self.dp.register_callback_query_handler(self.get_calendar, state='*')
+
+    async def send_message(self, message: str):
+        return await self.bot.send_message(chat_id=self.chat_id, text=message)
+
+    async def get_main_menu(self, message: types.Message):
         keyboard = get_menu_keyboard()
         await message.answer('Выберите опцию', reply_markup=keyboard)
 
-    async def send_message(self, chat_id: str, message: str):
-        return await self.bot.send_message(chat_id=chat_id, text=message)
+    async def send_today_task_message(self, message: types.Message):
+        today_task = await self.repository.get_task_by_date(datetime.today()) or 'На сегодня нет заданий'
+        await message.answer(today_task)
 
-    async def send_task(self, message: types.Message):
-        await self.select_task_date(message)
+    async def send_current_week_schedule(self, message: types.Message):
+        current_week_schedule = await self.repository.get_schedule_by_date(datetime.today()) or 'На текущую неделю нет плана'
+        await message.answer(current_week_schedule)
 
-    async def send_schedule(self, message: types.Message):
-        await self.select_schedule_week(message)
-
-    async def send_comment(self, message: types.Message):
-        await self.select_comment_week(message)
-
-    async def send_train_results(self, message: types.Message):
-        await self.select_train_result_week(message)
-
-    async def select_task_date(self, message: types.Message):
+    async def select_date(self, message: types.Message):
         calendar, step = DetailedTelegramCalendar(calendar_id=1, locale='ru').build()
         await self.bot.send_message(message.chat.id,
                                     f'Выбрать {LSTEP[step]}',
                                     reply_markup=calendar)
 
-    async def select_schedule_week(self, message: types.Message):
-        calendar, step = DetailedTelegramCalendar(calendar_id=2, locale='ru').build()
-        await self.bot.send_message(message.chat.id,
-                                    f'Выбрать {LSTEP[step]}',
-                                    reply_markup=calendar)
-
-    async def select_comment_week(self, message: types.Message):
-        calendar, step = DetailedTelegramCalendar(calendar_id=3, locale='ru').build()
-        await self.bot.send_message(message.chat.id,
-                                    f'Выбрать {LSTEP[step]}',
-                                    reply_markup=calendar)
-
-    async def select_train_result_week(self, message: types.Message):
-        calendar, step = DetailedTelegramCalendar(calendar_id=4, locale='ru').build()
-        await self.bot.send_message(message.chat.id,
-                                    f"Выбрать {LSTEP[step]}",
-                                    reply_markup=calendar)
-
-    async def task_cal(self, c):
+    async def get_calendar(self, c, state: FSMContext):
         result, key, step = DetailedTelegramCalendar(calendar_id=1, locale='ru').process(c.data)
         if not result and key:
             await self.bot.edit_message_text(f'Выбрать {LSTEP[step]}',
@@ -77,53 +78,34 @@ class ILSSBot:
                                              c.message.message_id,
                                              reply_markup=key)
         elif result:
-            res = await self.repository.get_task_by_date(result)
-            if res:
-                await c.message.answer(res)
-            else:
-                await c.message.answer('На выбранный день нет заданий! Ура!')
+            await state.update_data(date=result)
+            await self.get_options_menu(c.message, result)
 
-    async def schedule_cal(self, c):
-        result, key, step = DetailedTelegramCalendar(calendar_id=2, locale='ru').process(c.data)
-        if not result and key:
-            await self.bot.edit_message_text(f'Выбрать {LSTEP[step]}',
-                                             c.message.chat.id,
-                                             c.message.message_id,
-                                             reply_markup=key)
-        elif result:
-            week = result.isocalendar()[1]
-            res = await self.repository.get_schedule_by_week(week)
-            if res:
-                await c.message.answer(res)
-            else:
-                await c.message.answer('На выбранную неделю нет расписания :(')
+    async def get_options_menu(self, message: types.Message, selected_date: datetime):
+        keyboard = get_options_menu()
+        await message.answer(f'Выберите опцию для даты {selected_date}', reply_markup=keyboard)
 
-    async def comment_cal(self, c):
-        result, key, step = DetailedTelegramCalendar(calendar_id=3, locale='ru').process(c.data)
-        if not result and key:
-            await self.bot.edit_message_text(f'Выбрать {LSTEP[step]}',
-                                             c.message.chat.id,
-                                             c.message.message_id,
-                                             reply_markup=key)
-        elif result:
-            week = result.isocalendar()[1]
-            res = await self.repository.get_comment_by_week(week)
-            if res:
-                await c.message.answer(res)
-            else:
-                await c.message.answer('На выбранную неделю нет комментариев :(')
+    async def send_task_message_for_date(self, message: types.Message, state: FSMContext):
+        selected_date = await self.get_date_from_state(state)
+        task = await self.repository.get_task_by_date(selected_date) or 'На выбранный день задания не найдено'
+        await message.answer(task)
 
-    async def train_results_cal(self, c):
-        result, key, step = DetailedTelegramCalendar(calendar_id=4, locale='ru').process(c.data)
-        if not result and key:
-            await self.bot.edit_message_text(f'Выбрать {LSTEP[step]}',
-                                             c.message.chat.id,
-                                             c.message.message_id,
-                                             reply_markup=key)
-        elif result:
-            week = result.isocalendar()[1]
-            res = await self.repository.get_train_result_by_week(week)
-            if res:
-                await c.message.answer(res)
-            else:
-                await c.message.answer('На выбранную неделю нет результатов тренировок :(')
+    async def send_schedule_message_for_date(self, message: types.Message, state: FSMContext):
+        selected_date = await self.get_date_from_state(state)
+        schedule = await self.repository.get_schedule_by_date(selected_date) or 'На выбранную неделю расписания не найдено'
+        await message.answer(schedule)
+
+    async def send_comments_message_for_date(self, message: types.Message, state: FSMContext):
+        selected_date = await self.get_date_from_state(state)
+        comments = await self.repository.get_comment_by_date(selected_date) or 'На выбранную неделю комментариев к плану не найдено'
+        await message.answer(comments)
+
+    async def send_train_results_message_for_date(self, message: types.Message, state: FSMContext):
+        selected_date = await self.get_date_from_state(state)
+        train_results = await self.repository.get_train_result_by_date(selected_date) \
+                        or 'На выбранную неделю результатов тренировок и комментариев тренера не найдено'
+        await message.answer(train_results)
+
+    async def get_date_from_state(self, state: FSMContext):
+        data = await state.get_data()
+        return data.get('date')

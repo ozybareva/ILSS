@@ -40,8 +40,8 @@ class MessageProcessor:
             task_model_list, schedule_model = self.parse_message(msg_text, msg_date)
             if schedule_model:
                 schedule_model_list.append(schedule_model)
-                msg = await self.bot.send_message(chat_id=self.settings.chat_id, message=schedule_model.schedule)
-                await self.bot.bot.pin_chat_message(chat_id=self.settings.chat_id, message_id=msg.message_id)
+                msg = await self.bot.send_message(message=schedule_model.schedule)
+                await self.bot.bot.pin_chat_message(message_id=msg.message_id)
                 self.repository.bulk_write_to_db(task_model_list)
         self.repository.bulk_write_to_db(schedule_model_list)
 
