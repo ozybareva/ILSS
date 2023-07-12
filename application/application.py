@@ -31,6 +31,8 @@ class App:
         self.add_routes()
         self.add_jobs()
 
+        self._scheduler.start()
+
         try:
             logging.info(f'Start application')
             tasks = asyncio.gather(
