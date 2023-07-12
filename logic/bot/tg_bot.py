@@ -1,7 +1,7 @@
 from aiogram import Bot, Dispatcher, types
 from aiogram.dispatcher import FSMContext
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
-from datetime import datetime
+from datetime import date
 from telegram_bot_calendar import DetailedTelegramCalendar
 
 from logic.bot.keyboard import *
@@ -52,16 +52,22 @@ class ILSSBot:
     async def send_message(self, message: str):
         return await self.bot.send_message(chat_id=self.chat_id, text=message)
 
+    async def unpin_messages(self):
+        return await self.bot.unpin_all_chat_messages(chat_id=self.chat_id)
+
+    async def pin_message(self, message_id: int):
+        return await self.bot.pin_chat_message(chat_id=self.chat_id, message_id=message_id)
+
     async def get_main_menu(self, message: types.Message):
         keyboard = get_menu_keyboard()
         await message.answer('Выберите опцию', reply_markup=keyboard)
 
     async def send_today_task_message(self, message: types.Message):
-        today_task = await self.repository.get_task_by_date(datetime.today()) or 'На сегодня нет заданий'
+        today_task = await self.repository.get_task_by_date(date.today()) or 'На сегодня нет заданий'
         await message.answer(today_task)
 
     async def send_current_week_schedule(self, message: types.Message):
-        current_week_schedule = await self.repository.get_schedule_by_date(datetime.today()) or 'На текущую неделю нет плана'
+        current_week_schedule = await self.repository.get_schedule_by_date(date.today()) or 'На текущую неделю нет плана'
         await message.answer(current_week_schedule)
 
     async def select_date(self, message: types.Message):
@@ -81,7 +87,7 @@ class ILSSBot:
             await state.update_data(date=result)
             await self.get_options_menu(c.message, result)
 
-    async def get_options_menu(self, message: types.Message, selected_date: datetime):
+    async def get_options_menu(self, message: types.Message, selected_date: date):
         keyboard = get_options_menu()
         await message.answer(f'Выберите опцию для даты {selected_date}', reply_markup=keyboard)
 

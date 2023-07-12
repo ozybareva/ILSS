@@ -41,7 +41,8 @@ class MessageProcessor:
             if schedule_model:
                 schedule_model_list.append(schedule_model)
                 msg = await self.bot.send_message(message=schedule_model.schedule)
-                await self.bot.bot.pin_chat_message(message_id=msg.message_id)
+                await self.bot.unpin_messages()
+                await self.bot.pin_message(message_id=msg.message_id)
                 self.repository.bulk_write_to_db(task_model_list)
         self.repository.bulk_write_to_db(schedule_model_list)
 
